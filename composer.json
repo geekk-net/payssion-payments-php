@@ -1,0 +1,27 @@
+{
+  "name": "geekk/payssion-payments-php",
+  "type": "library",
+  "description": "PHP classes for Payssion payments",
+  "keywords": ["payssion","payments"],
+  "homepage": "https://github.com/geekk-net/payssion-payments-php",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Igor",
+      "email": "igor@geekk.net",
+      "role": "Developer"
+    }
+  ],
+  "require":
+  {
+    "php": ">=8.1",
+    "ext-json": "*",
+    "guzzlehttp/guzzle": "6.*|7.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Geekk\\PayssionPayments\\": "src"
+    }
+  }
+}
+
