@@ -1,6 +1,6 @@
 <?php
 
-namespace Shared\Payment\Services\Payssion;
+namespace Geekk\PayssionPayments;
 
 use Exception;
 use GuzzleHttp\Client;
