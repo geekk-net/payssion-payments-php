@@ -1,8 +1,9 @@
 <?php
 
-namespace Geekk\PayssionPayments;
+namespace Shared\Payment\Services\Payssion;
 
 use Exception;
+use GuzzleHttp\Client;
 
 class PayssionApiClient
 {
@@ -18,6 +19,11 @@ class PayssionApiClient
     protected $api_key = ''; //your api key
     protected $secret_key = ''; //your secret key
 
+    /**
+     * @var boolean
+     */
+    protected $ssl_verify = true;
+
     protected static $sig_keys = array(
         'create' => array(
             'api_key', 'pm_id', 'amount', 'currency', 'order_id', 'secret_key'
@@ -26,35 +32,6 @@ class PayssionApiClient
             'api_key', 'transaction_id', 'order_id', 'secret_key'
         )
     );
-
-    /**
-     * @var array
-     */
-    protected $http_errors = array
-    (
-        400 => '400 Bad Request',
-        401 => '401 Unauthorized',
-        500 => '500 Internal Server Error',
-        501 => '501 Not Implemented',
-        502 => '502 Bad Gateway',
-        503 => '503 Service Unavailable',
-        504 => '504 Gateway Timeout',
-    );
-
-    /**
-     * @var array
-     */
-    protected $allowed_request_methods = array(
-        'get',
-        'put',
-        'post',
-        'delete',
-    );
-
-    /**
-     * @var boolean
-     */
-    protected $ssl_verify = true;
 
     /**
      * Constructor
@@ -109,7 +86,7 @@ class PayssionApiClient
      *
      * @param bool $ssl_verify SSL verify
      */
-    public function setSSLverify($ssl_verify)
+    public function setSslVerify($ssl_verify): void
     {
         $this->ssl_verify = $ssl_verify;
     }
@@ -121,7 +98,6 @@ class PayssionApiClient
     {
         return $this->call(
             'create',
-            'post',
             $params
         );
     }
@@ -133,7 +109,6 @@ class PayssionApiClient
     {
         return $this->call(
             'details',
-            'post',
             $params
         );
     }
@@ -146,14 +121,13 @@ class PayssionApiClient
      * @param array $params
      * @return array
      */
-    protected function call($method, $request, $params)
+    protected function call($method, $params)
     {
 
         $validate_params = array
         (
             false === is_string($method) => 'Method name must be string',
-            false === $this->checkRequestMethod($request) => 'Not allowed request method type',
-            true === empty($params) => 'params is null',
+            true === empty($params) => 'params is empty',
         );
 
         $this->checkForErrors($validate_params);
@@ -161,7 +135,7 @@ class PayssionApiClient
         $params['api_key'] = $this->api_key;
         $params['api_sig'] = $this->getSig($params, self::$sig_keys[$method]);
 
-        $response = $this->pushData($method, $request, $params);
+        $response = $this->pushData($method, $params);
 
         return json_decode($response, true);
     }
@@ -203,63 +177,30 @@ class PayssionApiClient
     }
 
     /**
-     * Check if method is allowed
-     *
-     * @param string $method_type
-     * @return bool
-     */
-    protected function checkRequestMethod($method_type)
-    {
-        $request_method = strtolower($method_type);
-
-        if(in_array($request_method, $this->allowed_request_methods))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * Method responsible for pushing data to server
      */
-    protected function pushData(string $method, string $method_type, array|string $vars): string
+    protected function pushData(string $method, array $vars): string
     {
-        $ch = curl_init();
+        $client = new Client([
+            'base_uri' => $this->api_url,
+            'timeout'  => 15,
+            'verify' => $this->ssl_verify
+        ]);
 
-        curl_setopt($ch, CURLOPT_URL, $this->api_url. $method);
-        curl_setopt($ch, CURLOPT_POST, true);
+        $response = $client->request(
+            'POST',
+            $method,
+            [
+                'form_params' => $vars,
+                'headers' => $this->getHeaders()
+            ]
+        );
 
-        if (is_array($vars)) $vars = http_build_query($vars, '', '&');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $vars);
-
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->getHeaders());
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->ssl_verify);
-
-        $response = curl_exec($ch);
-
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        if (isset($this->http_errors[$code]))
-        {
-            throw new Exception('Response Http Error - ' . $this->http_errors[$code], $code);
-        }
-
-        $code = curl_errno($ch);
-        if (0 < $code)
-        {
-            throw new Exception('Unable to connect to ' .
-                $this->api_url . ' Error: ' . "$code :". curl_error($ch), $code);
-        }
-
-        curl_close($ch);
-
-        return $response;
+        return $response->getBody();
     }
 
-    protected function &getHeaders() {
+    protected function getHeaders(): array
+    {
         $langVersion = phpversion();
         $uname = php_uname();
         $ua = array(
@@ -269,6 +210,7 @@ class PayssionApiClient
             'publisher' => 'payssion',
             'uname' => $uname,
         );
+
         $headers = array(
             'X-Payssion-Client-User-Agent: ' . json_encode($ua),
             "User-Agent: Payssion/php/$langVersion/" . self::VERSION,
