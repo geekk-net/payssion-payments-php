@@ -16,6 +16,7 @@ enum PayssionPaymentMethodEnum: string
     case eps_at = 'EPS';
     case p24_pl = 'Przelewy24';
     case bancontact_be = 'Bancontact';
+    case promptpay_th = 'Promptpay';
 
     public static function tryFromName(string $name): ?static
     {
