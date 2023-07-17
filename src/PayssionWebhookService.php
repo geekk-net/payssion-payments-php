@@ -18,6 +18,11 @@ class PayssionWebhookService
         return $this->data['amount'];
     }
 
+    public function getRawAmount(): ?string
+    {
+        return $this->data['amount'];
+    }
+
     public function getCurrency(): ?string
     {
         return $this->data['currency'];
@@ -43,7 +48,7 @@ class PayssionWebhookService
         $checkArray = array(
             $this->apiKey,
             $this->getPaymentMethodId()->name,
-            $this->getAmount(),
+            $this->getRawAmount(),
             $this->getCurrency(),
             $this->getOrderId(),
             $this->getState()->name,
